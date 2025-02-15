@@ -1,109 +1,217 @@
-import { StyleSheet, Image, Platform } from 'react-native';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import React, { useState, useCallback } from 'react';
+import {
+  StyleSheet,
+  TextInput,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  Dimensions,
+  RefreshControl,
+} from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ThemedText } from '@/components/ThemedText';
+import { Link } from 'expo-router';
 
-export default function TabTwoScreen() {
+const EXPLORE_DATA = Array.from({ length: 30 }, (_, i) => ({
+  id: `${i}`,
+  image: `https://picsum.photos/seed/${i}/400/400`,
+  likes: Math.floor(Math.random() * 1000),
+  user: {
+    name: `User ${i}`,
+    avatar: `https://i.pravatar.cc/150?img=${i}`,
+  },
+}));
+
+const TRENDING_TAGS = [
+  '#photography',
+  '#travel',
+  '#food',
+  '#art',
+  '#nature',
+  '#fashion',
+  '#technology',
+  '#fitness',
+].map((tag, index) => ({
+  id: index.toString(),
+  tag,
+  posts: Math.floor(Math.random() * 100000),
+}));
+
+interface Post {
+  id: string;
+  image: string;
+  likes: number;
+  user: {
+    name: string;
+    avatar: string;
+  };
+}
+
+export default function ExploreScreen() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [posts, setPosts] = useState<Post[]>(EXPLORE_DATA);
+  const [loading, setLoading] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Simulate network request
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setPosts(prevPosts => 
+      [...prevPosts.sort(() => Math.random() - 0.5)]
+    );
+    setRefreshing(false);
+  }, []);
+
+  const loadMore = async () => {
+    if (loading) return;
+    setLoading(true);
+    // Simulate network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const newPosts = Array.from({ length: 10 }, (_, i) => ({
+      id: `${posts.length + i}`,
+      image: `https://picsum.photos/seed/${posts.length + i}/400/400`,
+      likes: Math.floor(Math.random() * 1000),
+      user: {
+        name: `User ${posts.length + i}`,
+        avatar: `https://i.pravatar.cc/150?img=${posts.length + i}`,
+      },
+    }));
+    setPosts(prevPosts => [...prevPosts, ...newPosts]);
+    setLoading(false);
+  };
+
+  const renderTrendingTag = ({ item }: { item: { id: string; tag: string; posts: number } }) => (
+    <TouchableOpacity style={styles.trendingTag}>
+      <ThemedText style={styles.tagText}>{item.tag}</ThemedText>
+      <ThemedText style={styles.tagPosts}>{item.posts.toLocaleString()} posts</ThemedText>
+    </TouchableOpacity>
+  );
+
+  const renderPost = ({ item, index }: { item: Post; index: number }) => {
+    const width = (Dimensions.get('window').width - 40) / 3;
+    return (
+      <Link href={`/post/${item.id}`} asChild>
+        <TouchableOpacity style={[styles.postContainer, { width }]}>
+          <Image source={{ uri: item.image }} style={[styles.postImage, { width, height: width }]} />
+          <ThemedView style={styles.likesContainer}>
+            <FontAwesome5 name="heart" size={12} color="#fff" />
+            <ThemedText style={styles.likesText}>{item.likes}</ThemedText>
+          </ThemedView>
+        </TouchableOpacity>
+      </Link>
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.searchContainer}>
+        <FontAwesome5 name="search" size={16} color="#666" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user's current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+
+      <FlatList
+        ListHeaderComponent={() => (
+          <>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Trending Tags</ThemedText>
+            <FlatList
+              data={TRENDING_TAGS}
+              renderItem={renderTrendingTag}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.trendingList}
+            />
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Posts</ThemedText>
+          </>
+        )}
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={item => item.id}
+        numColumns={3}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        contentContainerStyle={styles.content}
+      />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
   },
-  titleContainer: {
+  content: {
+    padding: 10,
+    paddingTop: 60,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    zIndex: 1,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    padding: 10,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  sectionTitle: {
+    marginVertical: 15,
+    marginLeft: 5,
+  },
+  trendingList: {
+    marginBottom: 10,
+  },
+  trendingTag: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 10,
+    marginRight: 10,
+    minWidth: 100,
+  },
+  tagText: {
+    fontWeight: 'bold',
+  },
+  tagPosts: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  postContainer: {
+    margin: 1,
+  },
+  postImage: {
+    borderRadius: 5,
+  },
+  likesContainer: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 5,
+    borderRadius: 10,
+  },
+  likesText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 5,
   },
 });
